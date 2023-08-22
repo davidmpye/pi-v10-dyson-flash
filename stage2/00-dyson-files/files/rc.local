@@ -20,7 +20,7 @@ fi
 clear
 echo "About to start flash process for Dyson V10 BMS"
 
-cd /home/dmp
+cd /home/pi
 ./flash_dyson_v10.sh
 
 sleep 120
