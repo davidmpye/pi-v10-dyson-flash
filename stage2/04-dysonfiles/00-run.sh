@@ -1,6 +1,6 @@
 #!/bin/bash -e
-install -m 644 files/flash_dyson_v10.sh "${ROOTFS_DIR}/home/pi/"
-install -m 750 files/openocd "${ROOTFS_DIR}/home/pi/"
+install -m 755 files/flash_dyson_v10.sh "${ROOTFS_DIR}/home/pi/"
+install -m 755 files/openocd "${ROOTFS_DIR}/home/pi/"
 
 install -m 644 files/rpi1.cfg "${ROOTFS_DIR}/home/pi/"
 install -m 644 files/rpi2.cfg "${ROOTFS_DIR}/home/pi/"
