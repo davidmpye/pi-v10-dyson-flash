@@ -1,4 +1,5 @@
 #! /bin/bash
+{
 echo "Preparing to reflash Dyson V10 battery pack"
 
 echo "Figuring out which kind of Pi we are running on"
@@ -48,4 +49,9 @@ openocd -f $CFG_FILE \
 
 [ $? -eq 0 ] && echo "Flashing completed successfully"
 
+} 2>&1 | tee -a /boot/flash_log.txt
 
+
+while true; do
+	sleep 1000
+done
