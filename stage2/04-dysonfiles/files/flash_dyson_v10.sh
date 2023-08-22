@@ -33,7 +33,7 @@ raspi-gpio set 18 op dh
 
 echo "Unlocking processor"
 
-openocd -f $CFG_FILE \
+./openocd -f $CFG_FILE \
              -c "transport select swd" \
              -c "adapter speed 1000" \
 	     -c "reset_config srst_only" \
@@ -41,7 +41,7 @@ openocd -f $CFG_FILE \
              -c "init; at91samd.cpu mwb 0x41002100 0x10; halt; exit"
 
 echo "Reflashing"
-openocd -f $CFG_FILE \
+./openocd -f $CFG_FILE \
 	-c "transport select swd" \
 	-c "adapter speed 1000" \
 	-f at91samdXX.cfg \
