@@ -1,10 +1,11 @@
-#! /bin/bash
+#! /bin/bash -x
 {
 echo "Preparing to reflash Dyson V10 battery pack"
 
 echo "Figuring out which kind of Pi we are running on"
 
 IOADDR="`xxd -c 4 -g 4 /proc/device-tree/soc/ranges | sed '2!d;q' | cut -d ' ' -f 2`"
+echo "Got ${IOADDR}"
 
 FILENAME="/boot/V10_BMS.elf"
 
@@ -13,11 +14,15 @@ CFG_FILE=
 if [[ "$IOADDR" == "20000000" ]]; then
 	echo "Detected RPi V1/Zero - using IO address 20000000"
 	CFG_FILE="rpi1.cfg"
-else
-	echo "Detected RPi V2+ - using IO address 3f000000"
+elif [[ "$IOADDR" == "00000000" ]]; then
+	echo "Detected RPI4 - using IO address  0xFE000000"
+	CFG_FILE="rpi4.cfg"
+elif [[ "$IODDR" == "3f000000" ]]; then
+	echo "Detected RPi V2+ - using IO address 0x3F000000"
 	CFG_FILE="rpi2.cfg"
 fi
 
+cp ${FILENAME} .
 if [ $? -eq 0 ]; then
 	echo "Image copied successfully"
 else
