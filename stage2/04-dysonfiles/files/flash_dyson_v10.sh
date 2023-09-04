@@ -1,66 +1,67 @@
 #! /bin/bash -x
 {
 
+FILENAME="/boot/V10_BMS.elf"
+export FILENAME
+
+SWCLK=25
+SWDIO=24
+SRST=18
+export SWCLK SWDIO SRST
+
 function unlock_mcu() {
 	echo "Bringing up SAMD20 in halt state"
 
-	raspi-gpio set 18 op dl
-	raspi-gpio set 25 op dl
+	echo "Exporting SWCLK and SRST pins."
+	echo $SWCLK > /sys/class/gpio/export
+	echo $SRST > /sys/class/gpio/export
+	echo "out" > /sys/class/gpio/gpio$SWCLK/direction
+	echo "out" > /sys/class/gpio/gpio$SRST/direction
+
+	echo "Setting SWCLK low and pulsing SRST."
+	echo "0" > /sys/class/gpio/gpio$SWCLK/value
+	echo "0" > /sys/class/gpio/gpio$SRST/value
 	sleep 1
-	raspi-gpio set 18 op dh
+	echo "1" > /sys/class/gpio/gpio$SRST/value
+
+	echo "Unexporting SWCLK and SRST pins."
+	echo $SWCLK > /sys/class/gpio/unexport
+	echo $SRST > /sys/class/gpio/unexport
 
 	echo "Unlocking processor"
 
-	./openocd -f $CFG_FILE \
-             -c "transport select swd" \
-             -c "adapter speed 1000" \
-             -c "reset_config srst_only" \
-             -f at91samdXX.cfg  \
-             -c "init; at91samd.cpu mwb 0x41002100 0x10; reset; halt; exit"
+./openocd --debug -c "adapter driver sysfsgpio; \\
+sysfsgpio_swclk_num $SWCLK; \\
+sysfsgpio_swdio_num $SWDIO; \\
+sysfsgpio_srst_num $SRST; \\
+transport select swd; \\
+source [find at91samdXX.cfg]; \\
+reset_config srst_only; \\
+init; at91samd.cpu mwb 0x41002100 0x10; sleep 500; reset; halt; exit"\
 
 	return $?
 }
 
 function flash_mcu() {
-        ./openocd -f $CFG_FILE \
-                -c "transport select swd" \
-                -c "adapter speed 1000" \
-                -f at91samdXX.cfg \
-                -c "program $FILENAME verify reset exit"
+echo "Starting flash process"
+./openocd --debug -c "adapter driver sysfsgpio; \\
+sysfsgpio_swclk_num $SWCLK; \\
+sysfsgpio_swdio_num $SWDIO; \\
+sysfsgpio_srst_num $SRST; \\
+transport select swd; \\
+source [find at91samdXX.cfg]; \\
+reset_config srst_only; \\
+program $FILENAME verify; \\
+reset; \\
+shutdown"
+
+return $?
 }
 
 echo "Preparing to reflash Dyson V10 battery pack"
 
-echo "Figuring out which kind of Pi we are running on"
-
-IOADDR="`xxd -c 4 -g 4 /proc/device-tree/soc/ranges | sed '2!d;q' | cut -d ' ' -f 2`"
-echo "Got ${IOADDR}"
-
-FILENAME="/boot/V10_BMS.elf"
-
-CFG_FILE=
-
-if [[ "$IOADDR" == "20000000" ]]; then
-	echo "Detected RPi V1/Zero - using IO address 20000000"
-	CFG_FILE="rpi1.cfg"
-elif [[ "$IOADDR" == "00000000" ]]; then
-	echo "Detected RPI4 - using IO address  0xFE000000"
-	CFG_FILE="rpi4.cfg"
-elif [[ "$IODDR" == "3f000000" ]]; then
-	echo "Detected RPi V2+ - using IO address 0x3F000000"
-	CFG_FILE="rpi2.cfg"
-fi
-
-cp ${FILENAME} .
-if [ $? -eq 0 ]; then
-	echo "Image copied successfully"
-else
-	echo "Error: Unable to locate dyson.elf image file on boot partition - aborting flash process"
-	exit 1
-fi
-
 RESULT=
-for i in `seq 10`; do
+for i in `seq 5`; do
 	echo "Attempting to unlock/erase MCU - attempt ${i}"
 	unlock_mcu
 	RESULT=$?
@@ -78,7 +79,7 @@ if [ ${RESULT} -ne 0 ]; then
 fi
 
 RESULT=
-for i in `seq 10`; do
+for i in `seq 5`; do
 	echo "Programming MCU - attempt ${i}"
 	flash_mcu
 	RESULT=$?
@@ -99,4 +100,3 @@ fi
 } 2>&1 | tee -a /boot/flash_log.txt
 
 sync
-
